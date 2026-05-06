@@ -17,8 +17,8 @@ Each character in the message is converted into a number, encrypted with the pub
 The program tests multiple messages to confirm that the original text is recovered successfully.
 
 rsa_keygen-2.py This code generates RSA public and private keys using two prime numbers.
-It calculates n and ϕ(n), checks that the public exponent e is valid, then computes the private key d.
-Finally, the program prints the public key and private key used for RSA encryption and decryption.
+It calculates n and ϕ(n), verifies that the public exponent e is valid, then computes the private key d.
+Finally, the program displays the RSA public key and private key for encryption and decryption.
 
 RSA_ATTACK.py This code demonstrates a brute-force attack on RSA by factorizing the public modulus n to recover p and q.
 After finding the primes, it calculates ϕ(n), recovers the private key d, and decrypts the message.
