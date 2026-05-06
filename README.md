@@ -12,8 +12,9 @@ hybird_rsa_aes.py This code demonstrates Hybrid Encryption using both AES and RS
 AES is used to encrypt the actual message quickly and securely, while RSA is used to protect the AES key.
 Finally, the program decrypts the AES key and message, then verifies that the original data is recovered correctly.
 
-rsa_crypto.py This code implements basic RSA encryption and decryption for text messages.
-Each character is converted into a number, encrypted using the RSA public key, then decrypted using the private key to recover the original message.The program tests the process on multiple messages to verify that encryption and decryption work correctly.
+rsa_crypto.py This code performs RSA encryption and decryption using the generated public and private keys.
+Each character in the message is converted into a number, encrypted with the public key, then decrypted with the private key.
+The program tests multiple messages to confirm that the original text is recovered successfully.
 
 rsa_keygen-2.py This code generates RSA public and private keys using two prime numbers.
 It calculates n and ϕ(n), checks that the public exponent e is valid, then computes the private key d.
