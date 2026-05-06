@@ -28,6 +28,6 @@ complexity_analysis.py This code tests a brute-force attack on small RSA keys by
 It measures the average time needed to recover the prime numbers for different key sizes.
 Finally, it prints a summary table and draws a graph showing that larger RSA keys take longer to break.
 
-rsa_keygen.py This code generates RSA keys using fixed prime numbers and a weak random generator.
-It calculates n, ϕ(n), chooses a valid public exponent e, and computes the private key d.
-The main idea is to show that weak randomness can make RSA key generation predictable and less secure.
+rsa_keygen.py This code generates RSA public and private keys using a weak random number generator (PRNG).
+It calculates n, ϕ(n), selects a valid public exponent e, and computes the private key d.
+The program demonstrates that weak randomness can make RSA key generation predictable and reduce security.
