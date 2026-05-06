@@ -26,3 +26,7 @@ The program shows that RSA with small prime numbers is insecure and can be broke
 complexity_analysis.py This code tests a brute-force attack on small RSA keys by trying to factor n into p and q.
 It measures the average time needed to recover the prime numbers for different key sizes.
 Finally, it prints a summary table and draws a graph showing that larger RSA keys take longer to break.
+
+rsa_keygen.py This code generates RSA keys using fixed prime numbers and a weak random generator.
+It calculates n, ϕ(n), chooses a valid public exponent e, and computes the private key d.
+The main idea is to show that weak randomness can make RSA key generation predictable and less secure.
