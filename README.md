@@ -27,3 +27,6 @@ Finally, it prints a summary table and draws a graph showing that larger RSA key
 rsa_keygen.py This code generates RSA public and private keys using a weak random number generator (PRNG).
 It calculates n, ϕ(n), selects a valid public exponent e, and computes the private key d.
 The program demonstrates that weak randomness can make RSA key generation predictable and reduce security.
+
+RSA Digital Mailbox (HTML Interface)
+This code implements a secure digital mailbox simulation using HTML, CSS, and JavaScript. The system allows a sender to write and encrypt messages using RSA encryption before transmission. The encrypted ciphertext is displayed during transmission, while the receiver can decrypt the message using the private key. The interface visually demonstrates RSA key generation, encryption, decryption, and secure communication in an interactive way.
