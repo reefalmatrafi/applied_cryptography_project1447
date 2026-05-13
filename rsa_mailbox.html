@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RSA Digital Mailbox</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #08090d;
+    --panel: #0e1018;
+    --border: #1a2035;
+    --accent: #00f5c4;
+    --accent2: #0066ff;
+    --danger: #ff3e6c;
+    --warn: #ffb800;
+    --text: #c8d8e8;
+    --muted: #4a5a70;
+    --glow: 0 0 18px rgba(0,245,196,0.25);
+    --glow2: 0 0 18px rgba(0,102,255,0.25);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.07) 2px,
+      rgba(0,0,0,0.07) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(90deg, #0a0e1a, #08090d);
+    position: sticky; top: 0; z-index: 100;
+  }
+
+  header .logo-icon {
+    width: 36px; height: 36px;
+    border: 2px solid var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    box-shadow: var(--glow);
+    animation: pulse 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 8px rgba(0,245,196,0.2); }
+    50% { box-shadow: 0 0 22px rgba(0,245,196,0.5); }
+  }
+
+  header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  header span {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: auto;
+    letter-spacing: 1px;
+  }
+
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 16px;
+    padding: 20px;
+    max-width: 1300px;
+    margin: 0 auto;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .panel.sender::before { background: linear-gradient(90deg, transparent, var(--accent2), transparent); }
+  .panel.receiver::before { background: linear-gradient(90deg, transparent, var(--accent), transparent); }
+  .panel.keys::before { background: linear-gradient(90deg, transparent, var(--warn), transparent); }
+  .panel.cipher::before { background: linear-gradient(90deg, transparent, var(--danger), transparent); }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+
+  .panel-header .icon {
+    font-size: 18px;
+  }
+
+  .panel-header h2 {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .panel.sender .panel-header h2 { color: var(--accent2); }
+  .panel.receiver .panel-header h2 { color: var(--accent); }
+  .panel.keys .panel-header h2 { color: var(--warn); }
+  .panel.cipher .panel-header h2 { color: var(--danger); }
+
+  .panel-body { padding: 18px; }
+
+  /* Email form */
+  .email-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+
+  .email-row label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    width: 60px;
+    flex-shrink: 0;
+  }
+
+  .email-row input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+  }
+
+  .msg-area {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    resize: none;
+    line-height: 1.6;
+    min-height: 80px;
+    margin-top: 6px;
+  }
+
+  .msg-area::placeholder { color: var(--muted); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .btn:active::after { opacity: 0.1; }
+
+  .btn-send {
+    background: linear-gradient(135deg, #0044cc, #0066ff);
+    color: #fff;
+    box-shadow: 0 0 16px rgba(0,102,255,0.4);
+    margin-top: 14px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-send:hover { box-shadow: 0 0 26px rgba(0,102,255,0.7); transform: translateY(-1px); }
+
+  .btn-decrypt {
+    background: linear-gradient(135deg, #007a60, #00f5c4);
+    color: #001a12;
+    box-shadow: 0 0 16px rgba(0,245,196,0.3);
+    margin-top: 14px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-decrypt:hover { box-shadow: 0 0 26px rgba(0,245,196,0.6); transform: translateY(-1px); }
+
+  .btn-genkeys {
+    background: linear-gradient(135deg, #7a5500, #ffb800);
+    color: #1a0f00;
+    box-shadow: 0 0 16px rgba(255,184,0,0.3);
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-genkeys:hover { box-shadow: 0 0 26px rgba(255,184,0,0.6); transform: translateY(-1px); }
+
+  /* Keys panel */
+  .key-block {
+    margin-bottom: 14px;
+  }
+
+  .key-block label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  .key-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--warn);
+    background: rgba(255,184,0,0.06);
+    border: 1px solid rgba(255,184,0,0.15);
+    border-radius: 5px;
+    padding: 8px 10px;
+    word-break: break-all;
+    line-height: 1.5;
+    min-height: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .key-val.private { color: var(--danger); background: rgba(255,62,108,0.06); border-color: rgba(255,62,108,0.15); }
+
+  /* Cipher panel */
+  .cipher-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    background: rgba(255,62,108,0.05);
+    border: 1px solid rgba(255,62,108,0.15);
+    border-radius: 5px;
+    padding: 10px;
+    word-break: break-all;
+    line-height: 1.7;
+    color: var(--danger);
+    min-height: 60px;
+    max-height: 120px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+  }
+
+  /* Process steps */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+    opacity: 0;
+    transform: translateX(-8px);
+    transition: all 0.4s;
+  }
+
+  .step.visible { opacity: 1; transform: none; }
+  .step .dot { color: var(--accent); margin-top: 2px; flex-shrink: 0; }
+
+  /* Decrypted message area */
+  .decrypted-area {
+    background: rgba(0,245,196,0.04);
+    border: 1px solid rgba(0,245,196,0.15);
+    border-radius: 5px;
+    padding: 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    color: var(--accent);
+    min-height: 60px;
+    word-break: break-word;
+    line-height: 1.6;
+  }
+
+  /* Cipher blocks visual */
+  .cipher-blocks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 8px 0;
+  }
+
+  .cblock {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    background: rgba(255,62,108,0.1);
+    border: 1px solid rgba(255,62,108,0.2);
+    border-radius: 3px;
+    padding: 2px 5px;
+    color: var(--danger);
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+
+  .section-sep {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 14px 0;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-top: 1px solid var(--border);
+    background: rgba(0,0,0,0.3);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+
+  .status-dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .status-dot.error { background: var(--danger); }
+
+  /* Grid layout */
+  .panel.sender { grid-column: 1; grid-row: 1; }
+  .panel.cipher { grid-column: 2; grid-row: 1; }
+  .panel.keys   { grid-column: 1; grid-row: 2; }
+  .panel.receiver{ grid-column: 2; grid-row: 2; }
+
+  /* Math notation */
+  .math {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(0,245,196,0.05);
+    border: 1px solid rgba(0,245,196,0.1);
+    border-radius: 3px;
+    padding: 2px 6px;
+    display: inline-block;
+    margin: 2px;
+  }
+
+  .info-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 8px 0;
+    font-size: 12px;
+  }
+
+  .info-chip {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    letter-spacing: 0.5px;
+  }
+
+  .chip-blue { background: rgba(0,102,255,0.12); color: #7aabff; border: 1px solid rgba(0,102,255,0.2); }
+  .chip-green { background: rgba(0,245,196,0.1); color: var(--accent); border: 1px solid rgba(0,245,196,0.2); }
+  .chip-red { background: rgba(255,62,108,0.1); color: var(--danger); border: 1px solid rgba(255,62,108,0.2); }
+  .chip-yellow { background: rgba(255,184,0,0.1); color: var(--warn); border: 1px solid rgba(255,184,0,0.2); }
+
+  .loading-spinner {
+    display: none;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .encrypt-animation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .arrow-anim {
+    color: var(--danger);
+    font-size: 20px;
+    animation: arrowPulse 1s ease-in-out infinite;
+  }
+
+  @keyframes arrowPulse {
+    0%,100% { opacity: 0.3; transform: translateX(-4px); }
+    50% { opacity: 1; transform: translateX(4px); }
+  }
+
+  .highlight { color: var(--accent); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .formula-box {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin: 10px 0;
+    line-height: 1.8;
+  }
+
+  .formula-box .f { color: var(--accent2); }
+  .formula-box .v { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">RSA</div>
+  <h1>Digital Mailbox</h1>
+  <span>RSA ENCRYPTION SIMULATION &nbsp;|&nbsp; EDUCATIONAL DEMO</span>
+</header>
+
+<div class="main">
+
+  <!-- SENDER PANEL -->
+  <div class="panel sender">
+    <div class="panel-header">
+      <span class="icon">📤</span>
+      <h2>Sender — Compose & Encrypt</h2>
+    </div>
+    <div class="panel-body">
+      <div class="email-row">
+        <label>FROM</label>
+        <input type="text" value="alice@rsa.secure" readonly>
+      </div>
+      <div class="email-row">
+        <label>TO</label>
+        <input type="text" value="bob@rsa.secure" readonly>
+      </div>
+      <div class="email-row" style="border-bottom:none; padding-bottom:0;">
+        <label>SUBJECT</label>
+        <input type="text" id="subjectInput" placeholder="Enter subject…">
+      </div>
+      <hr class="section-sep">
+      <textarea class="msg-area" id="plainInput" placeholder="Type your secret message here…" rows="5"></textarea>
+      <button class="btn btn-send" onclick="encryptMessage()">
+        <span class="loading-spinner" id="encSpinner" style="border-top-color:#fff;"></span>
+        🔒 &nbsp;ENCRYPT &amp; SEND
+      </button>
+
+      <div class="steps" id="encSteps"></div>
+    </div>
+    <div class="status-bar">
+      <div class="status-dot" id="senderDot"></div>
+      <span id="senderStatus">READY — AWAITING INPUT</span>
+    </div>
+  </div>
+
+  <!-- CIPHER PANEL -->
+  <div class="panel cipher">
+    <div class="panel-header">
+      <span class="icon">🔐</span>
+      <h2>Encrypted Transmission</h2>
+    </div>
+    <div class="panel-body">
+      <div class="formula-box">
+        <span class="f">ENCRYPTION:</span>&nbsp;&nbsp;
+        <span class="v">C = M<sup>e</sup> mod n</span><br>
+        <span class="f">DECRYPTION:</span>&nbsp;&nbsp;
+        <span class="v">M = C<sup>d</sup> mod n</span>
+      </div>
+
+      <div class="info-row" id="cipherChips">
+        <span class="info-chip chip-red">NO DATA YET</span>
+      </div>
+
+      <label style="font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--muted); display:block; margin-bottom:6px; letter-spacing:1px;">CIPHERTEXT BLOCKS (each char encrypted separately):</label>
+      <div class="cipher-blocks" id="cipherBlocks" style="min-height:40px;"></div>
+
+      <hr class="section-sep">
+      <label style="font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--muted); display:block; margin-bottom:6px;">FULL CIPHERTEXT STRING:</label>
+      <div class="cipher-val" id="cipherFull">—</div>
+
+      <div class="encrypt-animation" id="encAnim" style="display:none;">
+        <span style="color:var(--accent2);">PLAINTEXT</span>
+        <span class="arrow-anim">→</span>
+        <span>M<sup>e</sup> mod n</span>
+        <span class="arrow-anim">→</span>
+        <span style="color:var(--danger);">CIPHERTEXT</span>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="status-dot" id="cipherDot"></div>
+      <span id="cipherStatus">WAITING FOR MESSAGE</span>
+    </div>
+  </div>
+
+  <!-- KEYS PANEL -->
+  <div class="panel keys">
+    <div class="panel-header">
+      <span class="icon">🗝️</span>
+      <h2>RSA Key Generation</h2>
+    </div>
+    <div class="panel-body">
+      <button class="btn btn-genkeys" onclick="generateKeys()">
+        <span class="loading-spinner" id="keySpinner" style="border-top-color:#1a0f00;"></span>
+        ⚙️ &nbsp;GENERATE NEW RSA KEYS
+      </button>
+      <hr class="section-sep">
+
+      <div class="key-block">
+        <label>PRIME p</label>
+        <div class="key-val" id="kp">—</div>
+      </div>
+      <div class="key-block">
+        <label>PRIME q</label>
+        <div class="key-val" id="kq">—</div>
+      </div>
+      <div class="key-block">
+        <label>MODULUS n = p × q</label>
+        <div class="key-val" id="kn">—</div>
+      </div>
+      <div class="key-block">
+        <label>φ(n) = (p−1)(q−1)</label>
+        <div class="key-val" id="kphi">—</div>
+      </div>
+      <div class="key-block">
+        <label>PUBLIC EXPONENT e &nbsp;<span style="color:#2a3a50;">[PUBLIC KEY = (e, n)]</span></label>
+        <div class="key-val" id="ke">—</div>
+      </div>
+      <div class="key-block">
+        <label>PRIVATE EXPONENT d &nbsp;<span style="color:#2a3a50;">[PRIVATE KEY = (d, n)]</span></label>
+        <div class="key-val private" id="kd">—</div>
+      </div>
+
+      <div class="steps" id="keySteps"></div>
+    </div>
+    <div class="status-bar">
+      <div class="status-dot" id="keyDot"></div>
+      <span id="keyStatus">NO KEYS GENERATED</span>
+    </div>
+  </div>
+
+  <!-- RECEIVER PANEL -->
+  <div class="panel receiver">
+    <div class="panel-header">
+      <span class="icon">📥</span>
+      <h2>Receiver — Decrypt</h2>
+    </div>
+    <div class="panel-body">
+      <div class="email-row">
+        <label>FROM</label>
+        <input type="text" value="alice@rsa.secure" readonly>
+      </div>
+      <div class="email-row">
+        <label>TO</label>
+        <input type="text" value="bob@rsa.secure" readonly>
+      </div>
+      <div class="email-row" style="border-bottom:none; padding-bottom:0;">
+        <label>SUBJECT</label>
+        <input type="text" id="recvSubject" readonly style="color:var(--accent);">
+      </div>
+      <hr class="section-sep">
+
+      <label style="font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--muted); display:block; margin-bottom:6px;">RECEIVED CIPHERTEXT:</label>
+      <div class="cipher-val" id="recvCipher" style="margin-bottom:12px;">No message received yet.</div>
+
+      <button class="btn btn-decrypt" onclick="decryptMessage()">
+        🔓 &nbsp;DECRYPT WITH PRIVATE KEY
+      </button>
+
+      <hr class="section-sep">
+      <label style="font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--accent); display:block; margin-bottom:6px; letter-spacing:1px;">DECRYPTED MESSAGE:</label>
+      <div class="decrypted-area" id="decryptedMsg">—</div>
+
+      <div class="steps" id="decSteps"></div>
+    </div>
+    <div class="status-bar">
+      <div class="status-dot" id="recvDot"></div>
+      <span id="recvStatus">AWAITING ENCRYPTED MESSAGE</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+//  RSA FROM SCRATCH — pure JS, no crypto libraries
+// ============================================================
+
+let RSA = {
+  p: 0, q: 0, n: 0n, phi: 0n, e: 0n, d: 0n,
+  ready: false,
+  cipherBlocks: [],
+};
+
+// ---------- Utilities ----------
+
+function bigIntPow(base, exp, mod) {
+  // Fast modular exponentiation (square-and-multiply)
+  let result = 1n;
+  base = base % mod;
+  while (exp > 0n) {
+    if (exp % 2n === 1n) result = result * base % mod;
+    exp = exp / 2n;
+    base = base * base % mod;
+  }
+  return result;
+}
+
+function gcd(a, b) {
+  while (b !== 0n) { [a, b] = [b, a % b]; }
+  return a;
+}
+
+function modInverse(e, phi) {
+  // Extended Euclidean Algorithm
+  let [old_r, r] = [e, phi];
+  let [old_s, s] = [1n, 0n];
+  while (r !== 0n) {
+    const q = old_r / r;
+    [old_r, r] = [r, old_r - q * r];
+    [old_s, s] = [s, old_s - q * s];
+  }
+  return ((old_s % phi) + phi) % phi;
+}
+
+// Miller-Rabin primality test
+function millerRabin(n, k = 10) {
+  if (n < 2n) return false;
+  if (n === 2n || n === 3n) return true;
+  if (n % 2n === 0n) return false;
+
+  let r = 0n, d = n - 1n;
+  while (d % 2n === 0n) { d /= 2n; r++; }
+
+  const witnesses = [2n,3n,5n,7n,11n,13n,17n,19n,23n,29n];
+  for (let a of witnesses) {
+    if (a >= n) continue;
+    let x = bigIntPow(a, d, n);
+    if (x === 1n || x === n - 1n) continue;
+    let cont = false;
+    for (let i = 0n; i < r - 1n; i++) {
+      x = bigIntPow(x, 2n, n);
+      if (x === n - 1n) { cont = true; break; }
+    }
+    if (!cont) return false;
+  }
+  return true;
+}
+
+// Generate a random probable prime with ~bits bits
+function randomPrime(bits) {
+  while (true) {
+    // Build random odd number of desired bit length
+    let num = BigInt(Math.floor(Math.random() * (2 ** (bits - 2))) + 2 ** (bits - 2));
+    num = num | 1n; // ensure odd
+    if (millerRabin(num)) return num;
+  }
+}
+
+// ---------- Key Generation ----------
+
+function generateKeys() {
+  const spinner = document.getElementById('keySpinner');
+  spinner.style.display = 'inline-block';
+  setStat('keyDot','','KEY GENERATION IN PROGRESS…');
+
+  setTimeout(() => {
+    const bits = 12; // small primes for demo so we can show actual math
+    let p, q;
+    do {
+      p = randomPrime(bits);
+      q = randomPrime(bits);
+    } while (p === q || Math.abs(Number(p - q)) < 10);
+
+    const n = p * q;
+    const phi = (p - 1n) * (q - 1n);
+
+    // Choose e: common choices are 3, 17, 65537 — pick one coprime to phi
+    let e = 65537n;
+    if (gcd(e, phi) !== 1n) e = 17n;
+    if (gcd(e, phi) !== 1n) {
+      e = 3n;
+      while (gcd(e, phi) !== 1n) e += 2n;
+    }
+
+    const d = modInverse(e, phi);
+
+    RSA = { p, q, n, phi, e, d, ready: true, cipherBlocks: [] };
+
+    // Display
+    document.getElementById('kp').textContent    = p.toString();
+    document.getElementById('kq').textContent    = q.toString();
+    document.getElementById('kn').textContent    = `${p} × ${q} = ${n}`;
+    document.getElementById('kphi').textContent  = `(${p-1n}) × (${q-1n}) = ${phi}`;
+    document.getElementById('ke').textContent    = e.toString();
+    document.getElementById('kd').textContent    = d.toString();
+
+    spinner.style.display = 'none';
+
+    showSteps('keySteps', [
+      `1. Selected prime p = ${p}`,
+      `2. Selected prime q = ${q}`,
+      `3. n = p×q = ${n}`,
+      `4. φ(n) = (p-1)(q-1) = ${phi}`,
+      `5. Chose e = ${e} [gcd(e,φ)=${gcd(e,phi)}]`,
+      `6. d = e⁻¹ mod φ(n) = ${d}`,
+      `7. Public key: (e=${e}, n=${n})`,
+      `8. Private key: (d=${d}, n=${n})`,
+    ]);
+
+    setStat('keyDot','active','KEYS READY — PUBLIC & PRIVATE');
+    setStat('senderDot','','READY TO ENCRYPT');
+    setStat('senderStatus','','KEYS LOADED — TYPE A MESSAGE');
+  }, 50);
+}
+
+// ---------- Encryption ----------
+
+function encryptMessage() {
+  if (!RSA.ready) {
+    alert('Please generate RSA keys first!');
+    return;
+  }
+  const plain = document.getElementById('plainInput').value.trim();
+  if (!plain) { alert('Please type a message!'); return; }
+
+  const subject = document.getElementById('subjectInput').value || '(no subject)';
+
+  setStat('senderDot','active','ENCRYPTING…');
+  setStat('cipherDot','','RECEIVING TRANSMISSION…');
+
+  // Encrypt each character: C = M^e mod n
+  const cipherBlocks = [];
+  for (let i = 0; i < plain.length; i++) {
+    const M = BigInt(plain.charCodeAt(i));
+    const C = bigIntPow(M, RSA.e, RSA.n);
+    cipherBlocks.push(C);
+  }
+
+  RSA.cipherBlocks = cipherBlocks;
+  const cipherStr = cipherBlocks.join(',');
+
+  // Update cipher panel
+  document.getElementById('cipherFull').textContent = cipherStr;
+  document.getElementById('recvCipher').textContent = cipherStr;
+  document.getElementById('recvSubject').value = subject;
+  document.getElementById('decryptedMsg').textContent = '—';
+
+  // Render blocks
+  const blocksDiv = document.getElementById('cipherBlocks');
+  blocksDiv.innerHTML = '';
+  cipherBlocks.forEach((c, i) => {
+    const span = document.createElement('span');
+    span.className = 'cblock';
+    span.style.animationDelay = (i * 30) + 'ms';
+    span.textContent = c.toString();
+    blocksDiv.appendChild(span);
+  });
+
+  // Chips
+  document.getElementById('cipherChips').innerHTML = `
+    <span class="info-chip chip-blue">CHARS: ${plain.length}</span>
+    <span class="info-chip chip-red">BLOCKS: ${cipherBlocks.length}</span>
+    <span class="info-chip chip-yellow">e=${RSA.e}, n=${RSA.n}</span>
+  `;
+
+  document.getElementById('encAnim').style.display = 'flex';
+
+  showSteps('encSteps', [
+    `Message: "${plain}"`,
+    `For each char: C = M^${RSA.e} mod ${RSA.n}`,
+    `E.g. '${plain[0]}' (${plain.charCodeAt(0)}) → ${cipherBlocks[0]}`,
+    `Total: ${cipherBlocks.length} encrypted blocks`,
+    `Transmission complete ✓`,
+  ]);
+
+  setStat('senderDot','active','MESSAGE ENCRYPTED & SENT');
+  setStat('cipherDot','active','CIPHERTEXT TRANSMITTED');
+  setStat('recvDot','','AWAITING DECRYPTION');
+  setStat('recvStatus','','MESSAGE RECEIVED — CLICK DECRYPT');
+}
+
+// ---------- Decryption ----------
+
+function decryptMessage() {
+  if (!RSA.cipherBlocks.length) {
+    alert('No encrypted message to decrypt!');
+    return;
+  }
+
+  setStat('recvDot','active','DECRYPTING…');
+
+  // M = C^d mod n
+  const decChars = RSA.cipherBlocks.map(C => {
+    const M = bigIntPow(C, RSA.d, RSA.n);
+    return String.fromCharCode(Number(M));
+  });
+
+  const result = decChars.join('');
+
+  // Animated reveal
+  const area = document.getElementById('decryptedMsg');
+  area.textContent = '';
+  let i = 0;
+  const reveal = setInterval(() => {
+    area.textContent += decChars[i];
+    i++;
+    if (i >= decChars.length) clearInterval(reveal);
+  }, 40);
+
+  const sampleC = RSA.cipherBlocks[0];
+  const sampleM = bigIntPow(sampleC, RSA.d, RSA.n);
+
+  showSteps('decSteps', [
+    `Using private key: d=${RSA.d}, n=${RSA.n}`,
+    `For each block: M = C^${RSA.d} mod ${RSA.n}`,
+    `E.g. ${sampleC} → ${sampleM} = '${String.fromCharCode(Number(sampleM))}'`,
+    `All ${RSA.cipherBlocks.length} blocks decrypted`,
+    `Message restored: "${result}" ✓`,
+  ]);
+
+  setStat('recvDot','active','DECRYPTION SUCCESSFUL');
+  setStat('recvStatus','','PLAINTEXT RESTORED');
+}
+
+// ---------- UI Helpers ----------
+
+function showSteps(id, msgs) {
+  const div = document.getElementById(id);
+  div.innerHTML = '';
+  msgs.forEach((msg, i) => {
+    const step = document.createElement('div');
+    step.className = 'step';
+    step.innerHTML = `<span class="dot">▸</span><span>${msg}</span>`;
+    div.appendChild(step);
+    setTimeout(() => step.classList.add('visible'), i * 120);
+  });
+}
+
+function setStat(dotId, state, msg) {
+  const dot = document.getElementById(dotId);
+  if (dot) {
+    dot.className = 'status-dot' + (state ? ' ' + state : '');
+  }
+  // Find matching status text
+  const statId = dotId.replace('Dot','Status');
+  const stat = document.getElementById(statId);
+  if (stat && msg) stat.textContent = msg;
+}
+
+// Auto-generate keys on load
+window.addEventListener('load', () => {
+  setTimeout(generateKeys, 300);
+});
+</script>
+</body>
+</html>
