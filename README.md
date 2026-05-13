@@ -20,7 +20,7 @@ rsa_keygen-2.py This code generates RSA public and private keys using two prime 
 It calculates n and ϕ(n), verifies that the public exponent e is valid, then computes the private key d.
 Finally, the program displays the RSA public key and private key for encryption and decryption.
 
-RSA_ATTACK.py This code demonstrates a brute-force attack on RSA by factorizing the public modulus n to recover p and q.
+attack.py This code demonstrates a brute-force attack on RSA by factorizing the public modulus n to recover p and q.
 After finding the primes, it calculates ϕ(n), recovers the private key d, and decrypts the message.
 The program shows that RSA with small prime numbers is insecure and can be broken quickly.
 
